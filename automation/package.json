@@ -1,0 +1,23 @@
+{
+  "name": "restaurant-automation",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "scripts": {
+    "setup:local": "node scripts/setup-local.mjs",
+    "test": "node --test tests/workflow.test.mjs",
+    "test:integration": "node scripts/integration-test.mjs",
+    "test:remote": "node scripts/check-remote.mjs",
+    "test:local": "node scripts/check-local.mjs",
+    "bootstrap:local": "node scripts/bootstrap-local.mjs",
+    "start:local": "node scripts/start-local.mjs",
+    "check:neon": "node scripts/check-neon.mjs",
+    "start:neon": "node scripts/start-neon.mjs",
+    "bootstrap:neon": "node scripts/bootstrap-neon.mjs",
+    "test:neon": "node scripts/check-local.mjs --env-file .env.neon --timeout-ms 60000",
+    "verify:neon-restart": "node scripts/verify-neon-restart.mjs"
+  }
+}

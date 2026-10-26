@@ -1,12 +1,12 @@
 # Implementation boundary
 
-Phase 1 is the current authorized build slice, following the brief's instruction to establish the first milestone before later integrations. Read `testing.md` for what actually ran; file existence is not test evidence.
+The active priority is now **n8n automation first**, as requested after the Phase 1 foundation. The existing backend and Angular implementation is retained. Provision/verify automation persistence and hosting, then test one webhook before moving to Groq, Meta and mock-menu agent behavior. Read `testing.md` for what actually ran; file existence is not test evidence.
 
 | Phase | Status and remaining work |
 | --- | --- |
-| 1 Architecture/setup | Source implemented. External Neon/GitHub/Render account provisioning and hosted acceptance remain account-dependent. |
+| 1 Architecture/setup | Source implemented. GitHub remote is https://github.com/acob1/RestaurantSystem and main was pushed. Automation Neon is configured and verified; business-Neon and Render hosting remain incomplete. |
 | 2 Backend foundation | Initial catalog model/migrations/health/OpenAPI available; staff auth and full business model remain. |
-| 3 n8n/webhooks | Docker/DB/deployment configuration prepared; durable ingestion, dispatch, fourteen actual workflows and recovery remain. |
+| 3 n8n/webhooks | Standalone n8n/PostgreSQL and n8n-only Render configuration prepared; first authenticated development workflow added. The Docker image built; 4 static checks and 15 real runtime checks passed, including encrypted credentials and container replacement. See automation validation evidence. Durable business ingestion/replay and later workflows remain. |
 | 4 WhatsApp/AI | Not implemented. Meta test account, Groq adapters, typed allowlisted actions, conversation persistence remain. |
 | 5 Menu/cart | Public catalog/seed available; CRUD, image upload, variants, allergens, opening hours, cart, inventory, checkout remain. |
 | 6 Payments | Test-mode guard only. Paystack init/signature/verification/reconciliation, manual evidence, independent approvals remain. |

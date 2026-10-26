@@ -2,7 +2,11 @@
 
 Phase 1 implementation of the attached build brief: .NET 10 Clean Architecture API, Angular 22 administration workspace, PostgreSQL migrations, isolated tests, and Render deployment configuration. All payments remain in test mode. This is a development foundation; it cannot accept orders or verify payments yet.
 
-Local verification: **7 domain + 7 PostgreSQL API + 5 Angular + 2 Playwright tests passed**, with successful backend/Angular builds and migration. Render schema and Compose validation passed. Container image builds were blocked by registry errors; Neon/GitHub/hosted Render checks remain pending. See [execution evidence](docs/testing.md).
+Local verification: **7 domain + 7 PostgreSQL API + 5 Angular + 2 Playwright tests passed**, with successful backend/Angular builds and migration. Render schema and Compose validation passed. The n8n image now builds successfully; the API image build previously encountered registry errors. Automation Neon TLS/persistence verification has passed. Business-Neon, hosted Render, and hosted CI checks remain pending. See [execution evidence](docs/testing.md).
+
+## Current priority: n8n automation
+
+The development order now focuses on n8n before expanding the backend/dashboard. Existing application work is retained. Start the separate automation workspace using [automation/README.md](automation/README.md); its first milestone now has a working local authenticated development webhook, dedicated PostgreSQL persistence, 4 passing static checks, 15 passing runtime checks, and an n8n-only Render Blueprint. Open http://localhost:5678 for the running local workspace. Groq and Meta are later checkpoints that require development credentials and live provider tests. The original application commands below still apply.
 
 ## Run locally
 

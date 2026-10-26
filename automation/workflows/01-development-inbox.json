@@ -1,0 +1,171 @@
+{
+  "id": "restaurantWebhook01",
+  "name": "01 · Restaurant development inbox",
+  "active": false,
+  "nodes": [
+    {
+      "id": "inbox",
+      "name": "Development inbox",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "restaurant-development-inbox",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "restaurant-dev/inbox",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "restaurantHeaderAuth01",
+          "name": "Restaurant development webhook"
+        }
+      }
+    },
+    {
+      "id": "validate",
+      "name": "Validate simulated message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        250,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-input",
+              "leftValue": "={{ typeof $json.body?.messageId === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test($json.body.messageId) && typeof $json.body?.customerId === 'string' && /^mock-[A-Za-z0-9_-]{1,64}$/.test($json.body.customerId) && typeof $json.body?.text === 'string' && $json.body.text.trim().length > 0 && $json.body.text.length <= 1000 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "accepted",
+      "name": "Acknowledge development message",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        -100
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, service: 'restaurant-automation', mode: 'development', messageId: $json.body.messageId, reply: 'Development webhook received. No order has been placed.' } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "invalid",
+      "name": "Reject invalid input",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        520,
+        120
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\": false, \"error\": \"invalid_message\", \"message\": \"Provide messageId (1\\u201380 letters, numbers, underscores or hyphens), a mock- customerId, and text (1\\u20131000 characters).\"}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "notes",
+      "name": "Milestone contract",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -30,
+        -310
+      ],
+      "parameters": {
+        "content": "## First milestone: authenticated development webhook\nPOST /webhook/restaurant-dev/inbox\nCredential: Restaurant development webhook (X-Restaurant-Webhook-Token).\nUse simulated customer IDs prefixed mock-.\nNo AI, order creation, payments, or outbound WhatsApp yet.\nRepeats return the same acknowledgement and have no business side effects.\nImport/publish only this workflow; later steps build on its passing tests.",
+        "height": 240,
+        "width": 710
+      }
+    }
+  ],
+  "connections": {
+    "Development inbox": {
+      "main": [
+        [
+          {
+            "node": "Validate simulated message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate simulated message": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge development message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject invalid input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 30,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

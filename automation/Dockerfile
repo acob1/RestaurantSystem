@@ -1,9 +1,24 @@
-# Community Edition. Workflows are introduced in Phase 3, not silently enabled here.
+# Pinned Community Edition. The application and business database stay independent.
 FROM docker.n8n.io/n8nio/n8n:2.44.7
-ENV N8N_DIAGNOSTICS_ENABLED=false \
+ENV N8N_LISTEN_ADDRESS=0.0.0.0 \
+    N8N_DIAGNOSTICS_ENABLED=false \
     N8N_PERSONALIZATION_ENABLED=false \
+    N8N_COMMUNITY_PACKAGES_ENABLED=false \
+    N8N_BLOCK_ENV_ACCESS_IN_NODE=true \
+    N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
+    GENERIC_TIMEZONE=Africa/Accra \
+    TZ=Africa/Accra \
+    N8N_PAYLOAD_SIZE_MAX=1 \
+    N8N_CONCURRENCY_PRODUCTION_LIMIT=2 \
+    N8N_RUNNERS_MAX_CONCURRENCY=1 \
+    N8N_RUNNERS_MAX_OLD_SPACE_SIZE=96 \
+    NODE_OPTIONS=--max-old-space-size=320 \
+    EXECUTIONS_TIMEOUT=60 \
+    EXECUTIONS_TIMEOUT_MAX=120 \
     EXECUTIONS_DATA_PRUNE=true \
     EXECUTIONS_DATA_MAX_AGE=48 \
     EXECUTIONS_DATA_PRUNE_MAX_COUNT=1000 \
     EXECUTIONS_DATA_SAVE_ON_SUCCESS=none \
-    EXECUTIONS_DATA_SAVE_ON_ERROR=none
+    EXECUTIONS_DATA_SAVE_ON_ERROR=none \
+    EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=false
+COPY --chown=node:node workflows /opt/restaurant/workflows

@@ -1,0 +1,41 @@
+# Standalone automation stack. Does not start, stop or modify the existing app services.
+services:
+  automation-db:
+    image: postgres:17.6-alpine
+    profiles: [local-db]
+    environment:
+      POSTGRES_DB: restaurant_automation_dev
+      POSTGRES_USER: automation
+      POSTGRES_PASSWORD: local-automation-only
+    volumes: ["automation-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automation -d restaurant_automation_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  n8n:
+    build:
+      context: .
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: ${DB_POSTGRESDB_HOST:?Choose local-db or your dedicated Neon host}
+      DB_POSTGRESDB_PORT: ${DB_POSTGRESDB_PORT:-5432}
+      DB_POSTGRESDB_DATABASE: ${DB_POSTGRESDB_DATABASE:?Set the dedicated automation database}
+      DB_POSTGRESDB_USER: ${DB_POSTGRESDB_USER:?Set the automation role}
+      DB_POSTGRESDB_PASSWORD: ${DB_POSTGRESDB_PASSWORD:?Set the automation database password}
+      DB_POSTGRESDB_SCHEMA: ${DB_POSTGRESDB_SCHEMA:-public}
+      DB_POSTGRESDB_SSL_ENABLED: ${DB_POSTGRESDB_SSL_ENABLED:-true}
+      DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED: "true"
+      DB_POSTGRESDB_POOL_SIZE: "2"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set a stable random encryption key}
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      N8N_SECURE_COOKIE: "false"
+      WEBHOOK_URL: http://localhost:${AUTOMATION_PORT:-5678}/
+      N8N_EDITOR_BASE_URL: http://localhost:${AUTOMATION_PORT:-5678}/
+    ports: ["127.0.0.1:${AUTOMATION_PORT:-5678}:5678"]
+    volumes: ["n8n-local:/home/node/.n8n"]
+volumes:
+  automation-data:
+  n8n-local:

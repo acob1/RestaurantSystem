@@ -1,1 +1,5 @@
-Phase 3 gate: no workflows are deployed in Phase 1. The fourteen importable workflows from the build brief will be implemented against real authenticated application contracts after durable ingestion and staff/service authentication exist. This folder deliberately contains no misleading empty workflow exports.
+# Incremental automation workflows
+
+Only `01-development-inbox.json` is shipped for the first automation checkpoint. It is inactive on import, requires a Header Auth credential, validates simulated messages, and acknowledges them without creating orders. See ../README.md for import, publish, fixtures and real runtime tests.
+
+Do not generate or activate the original fourteen workflows in bulk. Extend one tested checkpoint at a time: actual Neon/Render persistence, authenticated webhook, Groq, verified Meta test ingress, then a mock-menu restaurant agent. The backend, real menus, payments and dashboard integrations follow later.

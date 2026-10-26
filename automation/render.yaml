@@ -1,0 +1,49 @@
+# Automation-only Blueprint. Select this path in Render; existing API/admin are not deployed.
+services:
+- type: web
+  name: restaurant-n8n
+  runtime: docker
+  plan: free
+  region: frankfurt
+  branch: main
+  autoDeployTrigger: 'off'
+  dockerfilePath: ./automation/Dockerfile
+  dockerContext: ./automation
+  healthCheckPath: /healthz
+  envVars:
+  - key: N8N_PORT
+    value: '10000'
+  - key: DB_TYPE
+    value: postgresdb
+  - key: DB_POSTGRESDB_HOST
+    sync: false
+  - key: DB_POSTGRESDB_PORT
+    value: '5432'
+  - key: DB_POSTGRESDB_DATABASE
+    sync: false
+  - key: DB_POSTGRESDB_USER
+    sync: false
+  - key: DB_POSTGRESDB_PASSWORD
+    sync: false
+  - key: DB_POSTGRESDB_SCHEMA
+    value: public
+  - key: DB_POSTGRESDB_SSL_ENABLED
+    value: 'true'
+  - key: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED
+    value: 'true'
+  - key: DB_POSTGRESDB_POOL_SIZE
+    value: '2'
+  - key: N8N_ENCRYPTION_KEY
+    sync: false
+  - key: N8N_WEBHOOK_URL
+    sync: false
+  - key: N8N_EDITOR_BASE_URL
+    sync: false
+  - key: N8N_HOST
+    sync: false
+  - key: N8N_PROTOCOL
+    value: https
+  - key: N8N_PROXY_HOPS
+    value: '1'
+  - key: GENERIC_TIMEZONE
+    value: Africa/Accra

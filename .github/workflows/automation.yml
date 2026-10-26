@@ -1,0 +1,25 @@
+name: n8n webhook milestone
+on:
+  push:
+    branches: [main]
+    paths: ['automation/**', '.github/workflows/automation.yml']
+  pull_request:
+    paths: ['automation/**', '.github/workflows/automation.yml']
+permissions:
+  contents: read
+jobs:
+  first-webhook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - run: node --test automation/tests/workflow.test.mjs
+      - run: node automation/scripts/integration-test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n8n-milestone-evidence
+          path: artifacts/automation
