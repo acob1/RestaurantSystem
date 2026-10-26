@@ -95,13 +95,13 @@ Select `automation/render.yaml` as the Blueprint path for `https://github.com/ac
 
 The Blueprint selects Frankfurt to match the existing Neon project. Set the dedicated Neon host/database/user/password and **the exact same** `N8N_ENCRYPTION_KEY` used by the local Neon-backed instance. Set `N8N_HOST` to the assigned Render hostname, and `N8N_WEBHOOK_URL` and `N8N_EDITOR_BASE_URL` to its HTTPS origin ending `/`. Port is 10000, listen address is 0.0.0.0, proxy hops 1, SSL verification true. The owner account, published workflow, and encrypted Header Auth credential already in this Neon database should appear in Render; sign in with the owner account you just created. Do **not** import the workflow or create a second credential unless a read-only database check proves they are absent. Do not expose the editor password, credential secret or encryption key in GitHub/Angular.
 
-For a hosted smoke check, configure `N8N_BASE_URL` and `RESTAURANT_WEBHOOK_TOKEN` securely in your shell, then run:
+For a hosted smoke check, supply the Render HTTPS origin and read the existing token from your ignored private Neon file without printing or uploading the file:
 
 ```sh
-node automation/scripts/check-remote.mjs
+N8N_BASE_URL=https://YOUR-RENDER-HOST.onrender.com node automation/scripts/check-remote.mjs --env-file automation/.env.neon
 ```
 
-The test sends only one simulated message and checks readiness. Separately redeploy and verify that the credential still decrypts and the published webhook still responds. Render Free has ephemeral storage, sleep/cold-start delays, and resource limits; use it for development only. Local testing under 512 MiB is not evidence of Render stability. No paid upgrade or live order handling is enabled.
+The test waits up to five minutes for readiness and up to 60 seconds for one simulated webhook response. Separately restart the service and verify that the credential still decrypts and the published webhook still responds. Render Free has ephemeral storage, sleep/cold-start delays, and resource limits; use it for development only. Local testing under 512 MiB is not evidence of Render stability. No paid upgrade or live order handling is enabled.
 
 ## Next checkpoints
 
