@@ -4,6 +4,8 @@ Existing Angular, ASP.NET Core, business migrations and dashboard are retained. 
 
 The Render build initially received HTTP 429 while fetching the pinned image from `docker.n8n.io`. The Dockerfile now fetches the same official n8n 2.44.7 image from Docker Hub, pinned to the verified matching multi-platform digest `sha256:942bc274709f27f99f7c6024a785d8e8f75ac06838cabcba448abb8d9127ec7b`. No workflow or database migration changed.
 
+On the first hosted startup, the internal JavaScript task runner took longer than its 30-second grant token lifetime and logged HTTP 403. The image sets `N8N_RUNNERS_GRANT_TOKEN_TTL=120` seconds for this slow development instance; verify a later `Registered runner "JS Task Runner"` line after deploying. This setting does not alter workflow data or Neon credentials.
+
 ## Local start
 
 Use Node 24.15 or a compatible Node 24 release. From the repository root:
