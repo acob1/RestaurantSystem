@@ -105,14 +105,13 @@ For a hosted smoke check, supply the Render HTTPS origin and read the existing t
 N8N_BASE_URL=https://YOUR-RENDER-HOST.onrender.com node automation/scripts/check-remote.mjs --env-file automation/.env.neon
 ```
 
-The test waits up to five minutes for readiness and up to 60 seconds for one simulated webhook response. Separately restart the service and verify that the credential still decrypts and the published webhook still responds. Render Free has ephemeral storage, sleep/cold-start delays, and resource limits; use it for development only. Local testing under 512 MiB is not evidence of Render stability. No paid upgrade or live order handling is enabled.
+The test waits up to five minutes for readiness and up to 60 seconds for one simulated webhook response. This passed before and after the user's explicit Render service restart on 2026-10-26, verifying that the credential still decrypts and the published webhook still responds. Render Free has ephemeral storage, sleep/cold-start delays, and resource limits; use it for development only. Local testing under 512 MiB is not evidence of Render stability. No paid upgrade or live order handling is enabled.
 
 ## Next checkpoints
 
-1. Verify actual Neon and Render health/persistence. Local substitute checks do not satisfy these external checks.
-2. After the webhook passes, add Groq through a protected credential and test its real developer API, timeout/rate-limit handling, and typed response validation. Never put the key in a workflow export or `$env` expression.
-3. Connect Meta's WhatsApp test sender/allowlisted recipient. Verify the webhook handshake and raw-body signature before processing messages. Use one private test recipient and never connect live customer ordering here.
-4. Extend this tested workflow incrementally into a mock-menu restaurant agent for greetings, menu enquiries and tentative order summaries. Mock prices must be fixed data, and responses must make clear that no real order/payment is confirmed.
-5. Return to API-backed menus, checkout, Paystack, Cloudinary and dashboard features after those checks pass.
+1. Add Groq through a protected credential and test its real developer API, timeout/rate-limit handling, and typed response validation. Never put the key in a workflow export or `$env` expression.
+2. Connect Meta's WhatsApp test sender/allowlisted recipient. Verify the webhook handshake and raw-body signature before processing messages. Use one private test recipient and never connect live customer ordering here.
+3. Extend this tested workflow incrementally into a mock-menu restaurant agent for greetings, menu enquiries and tentative order summaries. Mock prices must be fixed data, and responses must make clear that no real order/payment is confirmed.
+4. Return to API-backed menus, checkout, Paystack, Cloudinary and dashboard features after those checks pass.
 
 References: [PostgreSQL variables](https://docs.n8n.io/hosting/configuration/environment-variables/database/), [webhook authentication](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/), [publishing from CLI](https://docs.n8n.io/hosting/cli-commands/).
