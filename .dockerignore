@@ -1,0 +1,11 @@
+.git
+.tools
+**/node_modules
+**/bin
+**/obj
+**/dist
+**/coverage
+**/TestResults
+.env
+.env.*
+artifacts

@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="src/Restaurant.Domain/Restaurant.Domain.csproj" />
+  <Project Path="src/Restaurant.Application/Restaurant.Application.csproj" />
+  <Project Path="src/Restaurant.Infrastructure/Restaurant.Infrastructure.csproj" />
+  <Project Path="src/Restaurant.API/Restaurant.API.csproj" />
+  <Project Path="tests/Restaurant.UnitTests/Restaurant.UnitTests.csproj" />
+  <Project Path="tests/Restaurant.IntegrationTests/Restaurant.IntegrationTests.csproj" />
+</Solution>

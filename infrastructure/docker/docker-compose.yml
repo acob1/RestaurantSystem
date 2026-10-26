@@ -1,0 +1,65 @@
+services:
+  business-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: restaurant_dev
+      POSTGRES_USER: restaurant
+      POSTGRES_PASSWORD: local-development-only
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["business-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurant -d restaurant_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  api:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=business-db;Database=restaurant_dev;Username=restaurant;Password=local-development-only;SSL Mode=Disable
+      Cors__Origins__0: http://localhost:4200
+      Paystack__Mode: Test
+      Payments__AllowLivePayments: "false"
+    ports: ["127.0.0.1:5080:8080"]
+    depends_on:
+      business-db: {condition: service_healthy}
+  automation-db:
+    image: postgres:17.6-alpine
+    profiles: [automation]
+    environment:
+      POSTGRES_DB: restaurant_automation_dev
+      POSTGRES_USER: automation
+      POSTGRES_PASSWORD: local-automation-only
+    volumes: ["automation-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automation -d restaurant_automation_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  n8n:
+    profiles: [automation]
+    build: ../../automation
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: automation-db
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: restaurant_automation_dev
+      DB_POSTGRESDB_USER: automation
+      DB_POSTGRESDB_PASSWORD: local-automation-only
+      DB_POSTGRESDB_SSL_ENABLED: "false"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set a stable N8N_ENCRYPTION_KEY in your shell or root .env}
+      N8N_HOST: localhost
+      N8N_PROTOCOL: http
+      N8N_SECURE_COOKIE: "false"
+      WEBHOOK_URL: http://localhost:5678/
+      N8N_EDITOR_BASE_URL: http://localhost:5678/
+    ports: ["127.0.0.1:5678:5678"]
+    volumes: ["n8n-local:/home/node/.n8n"]
+    depends_on:
+      automation-db: {condition: service_healthy}
+volumes:
+  business-data:
+  automation-data:
+  n8n-local:

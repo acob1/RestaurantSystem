@@ -1,0 +1,1 @@
+Phase 3 gate: no workflows are deployed in Phase 1. The fourteen importable workflows from the build brief will be implemented against real authenticated application contracts after durable ingestion and staff/service authentication exist. This folder deliberately contains no misleading empty workflow exports.

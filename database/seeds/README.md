@@ -1,0 +1,1 @@
+Run the API with --migrate --seed under Development. The idempotent starter seed creates one restaurant and four sample dishes only if their respective tables are empty. It never truncates data and is refused outside Development. These sample prices are test fixtures, not a real restaurant price list.

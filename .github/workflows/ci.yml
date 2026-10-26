@@ -1,0 +1,89 @@
+name: Foundation checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.403
+      - run: dotnet restore backend/Restaurant.slnx --locked-mode
+      - run: dotnet build backend/Restaurant.slnx -c Release --no-restore
+      - run: dotnet test backend/Restaurant.slnx -c Release --no-build --logger trx --results-directory artifacts/backend
+      - run: dotnet list backend/Restaurant.slnx package --vulnerable --include-transitive
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-results
+          path: artifacts/backend
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/restaurant-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: npm
+          cache-dependency-path: frontend/restaurant-admin/package-lock.json
+      - run: npm ci
+      - run: npm run test:coverage
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: restaurant_e2e_test
+          POSTGRES_USER: restaurant
+          POSTGRES_PASSWORD: ci-only-password
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U restaurant -d restaurant_e2e_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=localhost;Database=restaurant_e2e_test;Username=restaurant;Password=ci-only-password;SSL Mode=Disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.403
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+      - run: dotnet run --project backend/src/Restaurant.API -- --migrate --seed
+      - run: dotnet run --project backend/src/Restaurant.API --no-launch-profile --urls http://127.0.0.1:5080 > /tmp/restaurant-api.log 2>&1 &
+      - run: |
+          for attempt in $(seq 1 30); do
+            if curl --fail http://127.0.0.1:5080/health/ready; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/restaurant-api.log
+          exit 1
+      - run: npm ci && npx playwright install --with-deps chromium && npm run e2e
+        working-directory: frontend/restaurant-admin
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: frontend/restaurant-admin/test-results
+  containers:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t restaurant-api:test .
+      - run: docker build -t restaurant-n8n:test automation
+      - run: N8N_ENCRYPTION_KEY=ci-only-not-for-use docker compose -f infrastructure/docker/docker-compose.yml config --quiet
