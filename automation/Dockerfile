@@ -1,5 +1,5 @@
 # Pinned Community Edition. The application and business database stay independent.
-FROM docker.n8n.io/n8nio/n8n:2.44.7
+FROM docker.io/n8nio/n8n:2.44.7@sha256:942bc274709f27f99f7c6024a785d8e8f75ac06838cabcba448abb8d9127ec7b
 ENV N8N_LISTEN_ADDRESS=0.0.0.0 \
     N8N_DIAGNOSTICS_ENABLED=false \
     N8N_PERSONALIZATION_ENABLED=false \

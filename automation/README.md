@@ -2,6 +2,8 @@
 
 Existing Angular, ASP.NET Core, business migrations and dashboard are retained. This milestone starts **only automation**: a dedicated PostgreSQL database, pinned n8n Community Edition, one authenticated development inbox, and real HTTP/redeployment tests. Groq and WhatsApp come after this checkpoint.
 
+The Render build initially received HTTP 429 while fetching the pinned image from `docker.n8n.io`. The Dockerfile now fetches the same official n8n 2.44.7 image from Docker Hub, pinned to the verified matching multi-platform digest `sha256:942bc274709f27f99f7c6024a785d8e8f75ac06838cabcba448abb8d9127ec7b`. No workflow or database migration changed.
+
 ## Local start
 
 Use Node 24.15 or a compatible Node 24 release. From the repository root:
