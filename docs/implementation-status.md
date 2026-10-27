@@ -1,13 +1,13 @@
 # Implementation boundary
 
-The active priority is **n8n automation first**, as requested after the Phase 1 foundation. The existing backend and Angular implementation is retained. Automation persistence, Render hosting and the first authenticated development webhook have been verified. A separate Groq mock-conversation workflow has passed local simulated-provider tests; hosted Groq activation is pending its credential and live test. Read `testing.md` for what actually ran; file existence is not test evidence.
+The active priority is **n8n automation first**, as requested after the Phase 1 foundation. The existing backend and Angular implementation is retained. Automation persistence, Render hosting, the first authenticated development webhook and the separate Groq mock-conversation workflow have been verified on the hosted development instance. Read `testing.md` for what actually ran; file existence is not test evidence.
 
 | Phase | Status and remaining work |
 | --- | --- |
 | 1 Architecture/setup | Source implemented. GitHub remote is https://github.com/acob1/RestaurantSystem and main was pushed. Automation Neon and n8n Render Free are configured and verified; business-Neon and hosting for the API/dashboard remain incomplete. |
 | 2 Backend foundation | Initial catalog model/migrations/health/OpenAPI available; staff auth and full business model remain. |
 | 3 n8n/webhooks | The pinned n8n image runs on Render Free against dedicated Neon PostgreSQL. The first authenticated development workflow is published; hosted readiness and authenticated webhook passed after restart and password rotation. Four initial static checks and 15 disposable local runtime checks also passed, including credential encryption and container replacement. Durable business ingestion/replay remains. |
-| 4 WhatsApp/AI | A separate Groq mock-conversation workflow and system prompt are implemented and tested with a fake provider. Hosted Groq credential binding/live test, Meta test ingress, backend-controlled actions and conversation persistence remain. |
+| 4 WhatsApp/AI | A separate Groq mock-conversation workflow and system prompt are implemented. Local fake-provider and hosted real Groq greeting/menu/order/fallback checks passed. Meta test ingress, backend-controlled actions and conversation persistence remain. |
 | 5 Menu/cart | Public catalog/seed available; CRUD, image upload, variants, allergens, opening hours, cart, inventory, checkout remain. |
 | 6 Payments | Test-mode guard only. Paystack init/signature/verification/reconciliation, manual evidence, independent approvals remain. |
 | 7 Admin operations | Foundation overview/catalog/setup available; login, finance, kitchen, customers, reports/settings writes remain. |

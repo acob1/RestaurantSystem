@@ -6,7 +6,7 @@ Foundation verification: **7 domain + 7 PostgreSQL API + 5 Angular + 2 Playwrigh
 
 ## Current priority: n8n automation
 
-The development order focuses on n8n before expanding the backend/dashboard. Existing application work is retained. The first automation milestone has a published authenticated development webhook on [Render](https://restaurant-n8n-5i1u.onrender.com), dedicated Neon persistence, 4 passing initial static checks and 15 passing disposable runtime checks. The rotated Neon password was verified through a direct certificate-checked connection and the hosted webhook. A separate [Groq mock-conversation workflow](docs/automation-milestone-02.md) has passed local tests; hosted credential binding and live Groq tests remain. The original local workspace uses http://localhost:5678; its Neon-backed counterpart on 5679 was stopped before Render started. The original application commands below still apply.
+The development order focuses on n8n before expanding the backend/dashboard. Existing application work is retained. The first automation milestone has a published authenticated development webhook on [Render](https://restaurant-n8n-5i1u.onrender.com), dedicated Neon persistence, 4 passing initial static checks and 15 passing disposable runtime checks. The rotated Neon password was verified through a direct certificate-checked connection and the hosted webhook. A separate [Groq mock-conversation workflow](docs/automation-milestone-02.md) passed 13 code tests, 14 disposable runtime checks and hosted real Groq greeting/menu/order/fallback checks. The original local workspace uses http://localhost:5678; its Neon-backed counterpart on 5679 was stopped before Render started. The original application commands below still apply.
 
 ## Run locally
 

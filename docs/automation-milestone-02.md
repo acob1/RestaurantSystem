@@ -16,9 +16,15 @@ Final local verification: 2026-10-27. Scope: a **separate** development workflow
 - `node --test automation/tests/*.test.mjs`: **13 passed** against the final export. Tests execute the actual embedded Code-node JavaScript in a VM, check the exported graph and credentials, validation, greetings, menu, minor-unit totals, invented SKU rejection, provider failures and prompt-as-data handling.
 - `node automation/scripts/ai-integration-test.mjs`: **14 passed** against the final export in disposable n8n 2.44.7, PostgreSQL 17.6 and a local fake Groq API. The JSON export imported and published. Both workflow 01 and 02 ran in the same disposable n8n instance. The AI webhook required authentication; greetings, menu, order, fallback, HTTP 429, malformed response, timeout and invented SKU handling passed. The fake Groq Bearer Auth credential was encrypted in PostgreSQL. The script removed its disposable containers, network and volume afterward.
 
-The disposable runtime test substitutes only the Groq URL with the local fake provider. It does not call Groq or import workflow 02 into the lasting Neon/Render instance. A live Groq test requires the user's key in the hosted n8n credential UI; no key is stored in source or requested in chat.
+The disposable runtime test substitutes only the Groq URL with the local fake provider. Its timeout, rate-limit and malformed-response cases were not induced against the live provider. No key is stored in source or requested in chat.
 
-## Hosted activation and acceptance
+## Hosted Groq checkpoint — passed
+
+On 2026-10-27, the user imported and published workflow 02 on the existing Render n8n instance and bound its two credentials in the editor. The secret-safe hosted script passed: workflow 01 still answered, the AI webhook rejected missing authentication, and real Groq calls handled a greeting, a menu request, a two-jollof-plus-Coke mock order, and an unsupported pizza request. The mock order total was **9,800 pesewas (GHS 98.00)**; the reply stated that nothing was placed or charged. The unsupported item returned a fallback with zero total. The script did not print request bodies, responses or secrets.
+
+A subsequent read-only Neon query over certificate-verified TLS with required channel binding confirmed both workflows were published and the `Restaurant Groq API` Bearer Auth credential record existed. Credential data was not selected or printed. This establishes the current hosted development path; it does not test Render Free cold-start reliability for real customer traffic.
+
+## Reproduce hosted activation and acceptance
 
 1. In [Groq Console](https://console.groq.com/keys), create a free-tier API key. Keep it private.
 2. In the hosted n8n editor, create a credential of type **Bearer Auth**, named `Restaurant Groq API`. Paste the Groq API key as the **Bearer Token** only; n8n supplies the `Bearer` prefix. Do not add the key to the workflow JSON, GitHub, Render variables, or Angular.
@@ -31,7 +37,7 @@ N8N_BASE_URL=https://restaurant-n8n-5i1u.onrender.com \
   .tools/node/bin/node automation/scripts/check-ai-remote.mjs --env-file automation/.env.neon
 ```
 
-Expected result: `Hosted original webhook, AI authentication, Groq greeting, menu and mock-order checks passed.` Do not mark live Groq acceptance complete until this actually runs and passes. If the hosted workflow returns 404, confirm it was published. If it returns 500 or 503, reselect the Bearer Auth credential and inspect n8n's execution error without copying secret values. If Groq returns 429, check account limits and retry later; do not add paid billing solely for this development milestone.
+Observed result: `Hosted original webhook, AI authentication, Groq greeting, menu, mock-order and unsupported-item fallback checks passed.` If the hosted workflow later returns 404, confirm it remains published. If it returns 500 or 503, check the Bearer Auth credential and inspect n8n's execution error without copying secret values. If Groq returns 429, check account limits and retry later; do not add paid billing solely for this development milestone.
 
 ## Reproduce local tests
 
