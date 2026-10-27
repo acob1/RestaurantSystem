@@ -8,7 +8,9 @@ The Blueprint is `infrastructure/render/render.yaml`; select this non-root path 
 4. Run business migrations once from a trusted workstation/CI administration context using direct Neon credentials: `ASPNETCORE_ENVIRONMENT=Staging dotnet run --project backend/src/Restaurant.API --no-launch-profile -- --migrate`. Do not seed staging with fixtures.
 5. Set n8n's stable `N8N_ENCRYPTION_KEY`, public `N8N_HOST` (hostname only), `WEBHOOK_URL`, and `N8N_EDITOR_BASE_URL` (HTTPS URLs). Save/recover the encryption key in a secret manager; never regenerate it during redeploy. Create the n8n owner account promptly. No n8n application credential goes in Angular.
 6. Deploy and verify `/health/live`, `/health/ready`, `/api/v1/system/status`, static deep links `/menu` and `/setup`, and n8n `/healthz`. Confirm a database restart is reported as not ready and recovers.
-7. Redeploy n8n and confirm workflows/credentials remain decryptable. Workflows are not part of Phase 1. Do not configure Meta webhooks yet.
+7. Redeploy n8n and confirm workflows/credentials remain decryptable. This is the original Phase 1 plan; current automation and Meta test milestones are tracked separately below.
+
+For the later Meta **test-only** checkpoint, use the separate `backend/render.yaml` Blueprint and [Milestone 03](automation-milestone-03.md). Do not attach Meta to the n8n URL: the API must validate the raw signature and persist the event first. The API deployment and genuine Meta test-number exchange are not yet verified.
 
 The API responds on `0.0.0.0:$PORT`; n8n port is pinned to Render's default 10000. Angular uses Node 24.15, `npm ci`, the application builder, and publishes `dist/restaurant-admin/browser` with SPA fallback. It has no Node hosting process. `config.json` is public and holds only the API URL.
 

@@ -1,0 +1,417 @@
+{
+  "id": "restaurantMetaTest03",
+  "name": "03 · Meta WhatsApp test bridge",
+  "active": false,
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "Authenticated internal test message",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "restaurant-dev/meta-bridge",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "restaurant-meta-test-bridge",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "restaurantMetaBridge03",
+          "name": "Restaurant Meta Bridge"
+        }
+      }
+    },
+    {
+      "id": "prepare",
+      "name": "Validate test message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        250,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const TEST_PHONE_ID = 'REPLACE_WITH_TEST_PHONE_NUMBER_ID';\nconst TEST_RECIPIENT = 'REPLACE_WITH_ALLOWLISTED_RECIPIENT';\nconst body = $input.first().json.body;\nconst valid = body && typeof body === 'object' && !Array.isArray(body)\n  && typeof body.messageId === 'string' && body.messageId.length <= 200\n  && body.messageId.startsWith('wamid.') && /^[\\x21-\\x7E]+$/.test(body.messageId)\n  && body.phoneNumberId === TEST_PHONE_ID && body.senderWaId === TEST_RECIPIENT\n  && typeof body.text === 'string' && body.text.trim().length > 0 && body.text.length <= 1000;\nif (!valid) return [{json:{valid:false,error:'invalid_test_message'}}];\nreturn [{json:{valid:true,messageId:body.messageId,recipient:TEST_RECIPIENT,\n  aiRequest:{messageId:'meta_'+body.messageId.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,75),\n    customerId:'mock-meta-'+TEST_RECIPIENT,text:body.text.trim()}}}];"
+      }
+    },
+    {
+      "id": "valid",
+      "name": "Valid test message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-true",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "ai",
+      "name": "Call existing AI conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        750,
+        -160
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://restaurant-n8n-5i1u.onrender.com/webhook/restaurant-dev/ai-conversation",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aiRequest) }}",
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "restaurantHeaderAuth01",
+          "name": "Restaurant development webhook"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "reply",
+      "name": "Prepare test reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        -160
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const inbound = $('Validate test message').first().json;\nconst response = $input.first().json;\nconst status = Number(response.statusCode ?? response.status ?? 0);\nconst ai = response.body ?? response;\nif (status !== 200 || ai.ok !== true || typeof ai.reply !== 'string' || ai.reply.length < 1 || ai.reply.length > 1000)\n  return [{json:{sendable:false,messageId:inbound.messageId,\n    error:status === 429 || ai.error === 'ai_rate_limited' ? 'ai_rate_limited' : 'ai_unavailable',\n    upstreamStatus:status,httpStatus:503}}];\nreturn [{json:{sendable:true,messageId:inbound.messageId,\n  outbound:{messaging_product:'whatsapp',recipient_type:'individual',to:inbound.recipient,type:'text',\n    text:{preview_url:false,body:ai.reply}}}}];"
+      }
+    },
+    {
+      "id": "sendable",
+      "name": "AI reply available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1250,
+        -160
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-true",
+              "leftValue": "={{ $json.sendable }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "meta",
+      "name": "Send via Meta test number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1500,
+        -260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/REPLACE_WITH_GRAPH_VERSION/REPLACE_WITH_TEST_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.outbound) }}",
+        "options": {
+          "timeout": 12000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "restaurantMetaBearer03",
+          "name": "Restaurant Meta Test API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "delivery",
+      "name": "Classify Meta delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1750,
+        -260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const inbound = $('Prepare test reply').first().json;\nconst response = $input.first().json;\nconst status = Number(response.statusCode ?? response.status ?? 0);\nconst graph = response.body ?? response;\nconst sentId = graph && Array.isArray(graph.messages) && graph.messages[0] && graph.messages[0].id;\nconst code = Number(graph?.error?.code ?? 0);\nconst accepted = status >= 200 && status < 300 && typeof sentId === 'string' && sentId.startsWith('wamid.');\nreturn [{json:{ok:accepted,mode:'meta-test',messageId:inbound.messageId,\n  ...(accepted ? {outboundMessageId:sentId} : {error:status === 429 || code === 4 || code === 17 || code === 80007\n    ? 'meta_rate_limited' : code === 190 || status === 401 ? 'meta_token_expired' : 'meta_delivery_failed'}),\n  httpStatus:accepted ? 200 : 503}}];"
+      }
+    },
+    {
+      "id": "complete",
+      "name": "Report test delivery",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2000,
+        -260
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:$json.ok,mode:$json.mode,messageId:$json.messageId,...($json.outboundMessageId?{outboundMessageId:$json.outboundMessageId}:{}),...($json.error?{error:$json.error}:{})} }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "invalid",
+      "name": "Reject internal test message",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        750,
+        160
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":false,\"error\":\"invalid_test_message\"}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ai-failed",
+      "name": "Report AI unavailable",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1500,
+        20
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {ok:false,messageId:$json.messageId,error:$json.error,upstreamStatus:$json.upstreamStatus} }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "note",
+      "name": "Milestone 3 test contract",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -500
+      ],
+      "parameters": {
+        "content": "## Meta test bridge — inactive until configured\nOnly the ASP.NET Core signed webhook should feed this authenticated internal endpoint. Replace the test phone ID, allowlisted recipient and supported Graph version before importing. Bind separate Header Auth and Meta Bearer Auth credentials. This calls existing workflow 02 without changing it. It sends only to the one test recipient; no orders or payments.",
+        "height": 245,
+        "width": 850
+      }
+    }
+  ],
+  "connections": {
+    "Authenticated internal test message": {
+      "main": [
+        [
+          {
+            "node": "Validate test message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate test message": {
+      "main": [
+        [
+          {
+            "node": "Valid test message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid test message?": {
+      "main": [
+        [
+          {
+            "node": "Call existing AI conversation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject internal test message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call existing AI conversation": {
+      "main": [
+        [
+          {
+            "node": "Prepare test reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare test reply": {
+      "main": [
+        [
+          {
+            "node": "AI reply available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI reply available?": {
+      "main": [
+        [
+          {
+            "node": "Send via Meta test number",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Report AI unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send via Meta test number": {
+      "main": [
+        [
+          {
+            "node": "Classify Meta delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Meta delivery": {
+      "main": [
+        [
+          {
+            "node": "Report test delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

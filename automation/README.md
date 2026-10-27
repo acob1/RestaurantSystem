@@ -1,6 +1,6 @@
 # n8n first: one webhook at a time
 
-Existing Angular, ASP.NET Core, business migrations and dashboard are retained. The first automation milestone established dedicated Neon persistence and one authenticated development inbox on pinned n8n Community Edition. Milestone 02 added a separate Groq mock-conversation workflow; local and hosted real Groq checks passed. See [milestone 02](../docs/automation-milestone-02.md). WhatsApp is the next checkpoint.
+Existing Angular, ASP.NET Core, business migrations and dashboard are retained. The first automation milestone established dedicated Neon persistence and one authenticated development inbox on pinned n8n Community Edition. Milestone 02 added a separate Groq mock-conversation workflow; local and hosted real Groq checks passed. [Milestone 03](../docs/automation-milestone-03.md) adds a separate Meta test bridge and signed ASP.NET ingress. Simulated local checks passed; Meta account configuration and hosted acceptance remain.
 
 The Render build initially received HTTP 429 while fetching the pinned image from `docker.n8n.io`. The Dockerfile now fetches the same official n8n 2.44.7 image from Docker Hub, pinned to the verified matching multi-platform digest `sha256:942bc274709f27f99f7c6024a785d8e8f75ac06838cabcba448abb8d9127ec7b`. No workflow or database migration changed.
 
@@ -109,7 +109,7 @@ The test waits up to five minutes for readiness and up to 60 seconds for one sim
 
 ## Next checkpoints
 
-1. Connect Meta's WhatsApp test sender/allowlisted recipient. Verify the webhook handshake and raw-body signature before processing messages. Use one private test recipient and never connect live customer ordering here.
+1. Connect Meta's WhatsApp test sender/allowlisted recipient through the signed ASP.NET callback. Follow [Milestone 03](../docs/automation-milestone-03.md), then verify one actual test-number exchange and restart persistence.
 2. Return to API-backed menus, checkout, Paystack, Cloudinary and dashboard features after those checks pass.
 
 References: [PostgreSQL variables](https://docs.n8n.io/hosting/configuration/environment-variables/database/), [webhook authentication](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/), [publishing from CLI](https://docs.n8n.io/hosting/cli-commands/).

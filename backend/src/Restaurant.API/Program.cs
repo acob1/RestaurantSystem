@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Restaurant.Application;
 using Restaurant.Infrastructure;
+using Restaurant.API;
 
 var builder = WebApplication.CreateBuilder(args);
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var port)) builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
@@ -13,6 +14,8 @@ if (builder.Configuration.GetValue<bool>("Payments:AllowLivePayments") ||
     throw new InvalidOperationException("This milestone only supports test payments.");
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient("meta-test-bridge", client => client.Timeout = TimeSpan.FromSeconds(35));
+builder.Services.AddHostedService<MetaTestDispatchWorker>();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"));
 var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.WithOrigins(origins).AllowAnyHeader().WithMethods("GET")));
@@ -35,6 +38,7 @@ app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => fa
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = x => x.Tags.Contains("ready") });
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 var api = app.MapGroup("/api/v1").RequireRateLimiting("read");
+api.MapMetaWebhook();
 api.MapGet("/system/status", () => new SystemStatusDto("Phase 1", "Test", "GHS",
     ["API connectivity", "Database readiness", "Restaurant profile", "Read-only menu"],
     ["Staff authentication", "WhatsApp", "Orders", "Payments", "Kitchen", "Reports"]));

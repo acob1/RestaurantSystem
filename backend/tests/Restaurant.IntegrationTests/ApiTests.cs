@@ -29,6 +29,11 @@ public sealed class ApiFixture : IAsyncLifetime
             b.UseEnvironment("Testing");
             // Host settings are visible during minimal-host startup, before DI registration.
             b.UseSetting("ConnectionStrings:DefaultConnection", connection);
+            b.UseSetting("Meta:TestMode", "true");
+            b.UseSetting("Meta:VerifyToken", "integration-test-verify-token");
+            b.UseSetting("Meta:AppSecret", "integration-test-app-secret");
+            b.UseSetting("Meta:PhoneNumberId", "123456789");
+            b.UseSetting("Meta:AllowedTestRecipient", "233201234567");
         });
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<BusinessDbContext>();

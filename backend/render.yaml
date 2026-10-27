@@ -1,0 +1,35 @@
+# Separate API test Blueprint. Existing n8n Blueprint/service is untouched.
+services:
+- type: web
+  name: restaurant-api-test
+  runtime: docker
+  plan: free
+  region: frankfurt
+  branch: main
+  autoDeployTrigger: 'off'
+  dockerfilePath: ./backend/Dockerfile
+  dockerContext: .
+  healthCheckPath: /health/ready
+  envVars:
+  - key: ASPNETCORE_ENVIRONMENT
+    value: Staging
+  - key: ConnectionStrings__DefaultConnection
+    sync: false
+  - key: Paystack__Mode
+    value: Test
+  - key: Payments__AllowLivePayments
+    value: 'false'
+  - key: Meta__TestMode
+    value: 'true'
+  - key: Meta__VerifyToken
+    sync: false
+  - key: Meta__AppSecret
+    sync: false
+  - key: Meta__PhoneNumberId
+    sync: false
+  - key: Meta__AllowedTestRecipient
+    sync: false
+  - key: Automation__MetaBridgeUrl
+    value: https://restaurant-n8n-5i1u.onrender.com/webhook/restaurant-dev/meta-bridge
+  - key: Automation__MetaBridgeToken
+    sync: false

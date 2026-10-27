@@ -18,7 +18,7 @@ curl --fail http://localhost:5080/health/ready
 
 Use a secret manager or environment injection instead of shell history for real passwords. Hosted configuration refuses SSL modes other than VerifyFull. No certificate-validation bypass is used. The local-only default uses SSL Disable for Docker on loopback. Pool maximum is clamped to 10 and commands/timeouts are bounded.
 
-Phase 1 migrations create Restaurants, MenuCategories, and MenuItems. Category names are unique; menu item category/name pairs are unique; positive bounded prices are enforced in PostgreSQL; category deletion is restricted; prices are bigint pesewas; menu concurrency uses PostgreSQL xmin. Restaurant reads deliberately use SingleOrDefault to enforce the current single-restaurant deployment assumption. Multi-restaurant tenancy requires an explicit tenant key/filter and membership authorization in a later design change.
+Phase 1 migrations create Restaurants, MenuCategories, and MenuItems. The Meta test migration adds `MetaWebhookEvents` to the **business** database, with a unique Meta message ID and a state/received-time index. It stores only allowlisted test-message text and dispatch state; it does not create an order or payment. Category names are unique; menu item category/name pairs are unique; positive bounded prices are enforced in PostgreSQL; category deletion is restricted; prices are bigint pesewas; menu concurrency uses PostgreSQL xmin. Restaurant reads deliberately use SingleOrDefault to enforce the current single-restaurant deployment assumption. Multi-restaurant tenancy requires an explicit tenant key/filter and membership authorization in a later design change.
 
 ## Planned relational model
 
