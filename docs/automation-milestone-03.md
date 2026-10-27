@@ -1,6 +1,6 @@
 # Milestone 3 — Meta WhatsApp test integration
 
-Status on 2026-10-27: **local signed-ingress and simulated bridge checks passed**. No Meta account, real test number, hosted API, or hosted workflow 03 has been connected yet. Workflows 01 and 02 were not edited. Do not point Meta at the n8n webhook: the public Meta callback is the ASP.NET Core endpoint, which verifies the signature before inserting a durable message.
+Status on 2026-10-27: **local signed-ingress and simulated bridge checks passed**. The separate `restaurant-business-dev` Neon project and `restaurant_business_dev` database are visible in user-provided Neon screenshots; their schema has not yet been migrated. No real test-number inbound exchange, hosted API, or hosted workflow 03 has been verified. Workflows 01 and 02 were not edited. Do not point Meta at the n8n webhook: the public Meta callback is the ASP.NET Core endpoint, which verifies the signature before inserting a durable message.
 
 ## Flow and boundary
 
@@ -17,6 +17,7 @@ The worker claims a pending event atomically. A successful Graph API acceptance 
 - Business migration: `backend/src/Restaurant.Infrastructure/Migrations/*_MetaTestInbox.cs`.
 - Separate importable workflow: `automation/workflows/03-meta-test-bridge.json`; source builder: `automation/scripts/build-meta-workflow.mjs`.
 - Separate Render API Blueprint: `backend/render.yaml`. The existing automation Blueprint is unchanged.
+- Idempotent EF SQL for Neon SQL Editor: `database/scripts/restaurant-business-dev.sql`. It checks `current_database()` before any DDL and ends with a migration/table count query.
 
 API environment variables for the **test** service:
 
@@ -46,6 +47,8 @@ DOTNET_CLI_HOME=/private/tmp/restaurant-dotnet .tools/dotnet/dotnet test backend
 
 Results: **16/16 ASP.NET integration tests** against disposable PostgreSQL, including the GET challenge, bad/missing signatures, changed raw body, wrong test sender/number, duplicate message IDs, database migration and a single worker dispatch after duplicate delivery. **18/18 n8n export/Code-node tests** passed. **11/11 disposable n8n/PostgreSQL runtime checks** passed with fake Groq and fake Meta HTTP services: the three workflows imported/published together, greeting response reached the fake Graph endpoint, missing bridge authentication and unallowlisted recipients were rejected, Graph 429 and expired-token errors were classified, AI rate limiting blocked outbound send, and the fake Meta token was encrypted in PostgreSQL. The runtime script removed its test containers and volume. These are **not** claims of a real Meta test-number exchange or hosted API readiness.
 
+The generated business SQL was also run **twice** against a disposable PostgreSQL 17.6 database named `restaurant_business_dev`; both runs succeeded, leaving **2 EF migration records and 4 expected tables**. Its guard rejected execution against a disposable `wrong_db`, leaving that database with zero public tables. The test container was removed. This is not a claim that the Neon business database has been migrated.
+
 ## Manual setup: business Neon, Render API, then Meta Console
 
 ### Rotate an exposed temporary Meta token first
@@ -56,7 +59,7 @@ Results: **16/16 ASP.NET integration tests** against disposable PostgreSQL, incl
 
 Meta's **Hello World sent** result tests the outbound `/messages` endpoint; it does not establish that inbound `messages` webhooks are subscribed or reaching the API. Keep the app in Development mode and use only the test number and verified recipient.
 
-1. In Neon, create a **business** database and role separate from the n8n automation database. Run the EF migrations from a trusted workstation using the direct Neon hostname and a migration role. The command is `ASPNETCORE_ENVIRONMENT=Staging .tools/dotnet/dotnet run --project backend/src/Restaurant.API --no-launch-profile -- --migrate` with `ConnectionStrings__DefaultConnection` supplied privately. Confirm `/health/ready` later returns 200. Do not run this against the n8n database or seed test data in Staging.
+1. The separate business Neon project/database now exists. In its **SQL Editor**, select database `restaurant_business_dev`, paste the complete `database/scripts/restaurant-business-dev.sql`, and run it. The script checks the selected database name before DDL and reports **2 applied migrations, 4 expected tables** on success. If you prefer a trusted workstation with direct Neon credentials, the equivalent EF command is `ASPNETCORE_ENVIRONMENT=Staging .tools/dotnet/dotnet run --project backend/src/Restaurant.API --no-launch-profile -- --migrate` with `ConnectionStrings__DefaultConnection` supplied privately. Do not run either method against the n8n database or seed test data in Staging.
 2. In Render, create a new Blueprint from GitHub `main` using Blueprint Path **`backend/render.yaml`**. This creates `restaurant-api-test` separately from `restaurant-n8n`. Fill the secret fields above; use the **pooled** business Neon connection string and keep `SSL Mode=VerifyFull`. Keep automatic deployment off. Check the service's `/health/live` and `/health/ready` endpoints after deploy. Its public HTTPS URL will be the callback origin.
 3. In Meta for Developers, create/select an app with the WhatsApp use case and keep it in **Development** mode. In WhatsApp **API Setup / Getting Started**, select Meta's **test number** and note its **Phone Number ID**, WABA ID, temporary access token and the Graph API version displayed in your setup. In the **To / Manage phone number list** area, add and verify only your private test recipient. The temporary user token expires; when it does, update only the hosted Bearer Auth credential. [Meta's Cloud API reference](https://www.postman.com/meta/whatsapp-business-platform/documentation/wlk6lh4/whatsapp-cloud-api) documents the test send endpoint and token behavior.
 4. In App settings → Basic, reveal the **App Secret** and save it only as `Meta__AppSecret` in Render. Generate a distinct random verify token privately, save it as `Meta__VerifyToken`, and keep the same value ready for Meta's callback form. Set the test Phone Number ID and allowlisted recipient in the two Render variables. Redeploy the API after changing variables.
