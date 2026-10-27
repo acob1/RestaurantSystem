@@ -1,0 +1,6 @@
+[
+  { "sku": "jollof-chicken", "name": "Jollof rice with chicken", "priceMinor": 4500 },
+  { "sku": "waakye", "name": "Waakye with egg", "priceMinor": 3500 },
+  { "sku": "banku-tilapia", "name": "Banku with tilapia", "priceMinor": 5500 },
+  { "sku": "coke", "name": "Coke", "priceMinor": 800 }
+]

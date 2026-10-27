@@ -1,6 +1,6 @@
 # n8n first: one webhook at a time
 
-Existing Angular, ASP.NET Core, business migrations and dashboard are retained. This milestone starts **only automation**: a dedicated PostgreSQL database, pinned n8n Community Edition, one authenticated development inbox, and real HTTP/redeployment tests. Groq and WhatsApp come after this checkpoint.
+Existing Angular, ASP.NET Core, business migrations and dashboard are retained. The first automation milestone established dedicated Neon persistence and one authenticated development inbox on pinned n8n Community Edition. Milestone 02 adds a separate Groq mock-conversation export and tests; see [milestone 02](../docs/automation-milestone-02.md). WhatsApp follows only after hosted Groq acceptance.
 
 The Render build initially received HTTP 429 while fetching the pinned image from `docker.n8n.io`. The Dockerfile now fetches the same official n8n 2.44.7 image from Docker Hub, pinned to the verified matching multi-platform digest `sha256:942bc274709f27f99f7c6024a785d8e8f75ac06838cabcba448abb8d9127ec7b`. No workflow or database migration changed.
 
@@ -109,9 +109,8 @@ The test waits up to five minutes for readiness and up to 60 seconds for one sim
 
 ## Next checkpoints
 
-1. Add Groq through a protected credential and test its real developer API, timeout/rate-limit handling, and typed response validation. Never put the key in a workflow export or `$env` expression.
+1. Import and publish workflow 02 with a protected Groq Bearer Auth credential, then run the hosted greeting/menu/order check. Never put the key in a workflow export or `$env` expression.
 2. Connect Meta's WhatsApp test sender/allowlisted recipient. Verify the webhook handshake and raw-body signature before processing messages. Use one private test recipient and never connect live customer ordering here.
-3. Extend this tested workflow incrementally into a mock-menu restaurant agent for greetings, menu enquiries and tentative order summaries. Mock prices must be fixed data, and responses must make clear that no real order/payment is confirmed.
-4. Return to API-backed menus, checkout, Paystack, Cloudinary and dashboard features after those checks pass.
+3. Return to API-backed menus, checkout, Paystack, Cloudinary and dashboard features after those checks pass.
 
 References: [PostgreSQL variables](https://docs.n8n.io/hosting/configuration/environment-variables/database/), [webhook authentication](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/), [publishing from CLI](https://docs.n8n.io/hosting/cli-commands/).

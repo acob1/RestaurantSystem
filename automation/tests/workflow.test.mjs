@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { workflow } from '../scripts/lib.mjs';
-test('only one inactive development workflow is shipped',()=>{
+test('the first development workflow remains independently importable',()=>{
   assert.equal(workflow.id,'restaurantWebhook01');assert.equal(workflow.active,false);
   const hook=workflow.nodes.find(n=>n.type==='n8n-nodes-base.webhook');
   assert.equal(hook.parameters.path,'restaurant-dev/inbox');
