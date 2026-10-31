@@ -38,7 +38,7 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const TEST_PHONE_ID = 'REPLACE_WITH_TEST_PHONE_NUMBER_ID';\nconst TEST_RECIPIENT = 'REPLACE_WITH_ALLOWLISTED_RECIPIENT';\nconst body = $input.first().json.body;\nconst valid = body && typeof body === 'object' && !Array.isArray(body)\n  && typeof body.messageId === 'string' && body.messageId.length <= 200\n  && body.messageId.startsWith('wamid.') && /^[\\x21-\\x7E]+$/.test(body.messageId)\n  && body.phoneNumberId === TEST_PHONE_ID && body.senderWaId === TEST_RECIPIENT\n  && typeof body.text === 'string' && body.text.trim().length > 0 && body.text.length <= 1000;\nif (!valid) return [{json:{valid:false,error:'invalid_test_message'}}];\nreturn [{json:{valid:true,messageId:body.messageId,recipient:TEST_RECIPIENT,\n  aiRequest:{messageId:'meta_'+body.messageId.replace(/[^A-Za-z0-9_-]/g,'_').slice(0,75),\n    customerId:'mock-meta-'+TEST_RECIPIENT,text:body.text.trim()}}}];"
+        "jsCode": "const TEST_PHONE_ID = 'REPLACE_WITH_TEST_PHONE_NUMBER_ID';\nconst TEST_RECIPIENT = 'REPLACE_WITH_ALLOWLISTED_RECIPIENT';\nconst body = $input.first().json.body;\nconst valid = body && typeof body === 'object' && !Array.isArray(body)\n  && typeof body.messageId === 'string' && body.messageId.length <= 200\n  && body.messageId.startsWith('wamid.') && /^[\\x21-\\x7E]+$/.test(body.messageId)\n  && body.phoneNumberId === TEST_PHONE_ID && body.senderWaId === TEST_RECIPIENT\n  && typeof body.text === 'string' && body.text.trim().length > 0 && body.text.length <= 1000;\nif (!valid) return [{json:{valid:false,error:'invalid_test_message'}}];\nreturn [{json:{valid:true,messageId:body.messageId,recipient:TEST_RECIPIENT,\n  aiRequest:{whatsAppId:TEST_RECIPIENT,text:body.text.trim(),messageId:body.messageId}}}];"
       }
     },
     {
@@ -77,7 +77,7 @@
     },
     {
       "id": "ai",
-      "name": "Call existing AI conversation",
+      "name": "Call AI integrated conversation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
@@ -86,7 +86,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "https://restaurant-n8n-5i1u.onrender.com/webhook/restaurant-dev/ai-conversation",
+        "url": "https://restaurant-n8n-5i1u.onrender.com/webhook/restaurant-dev/ai-integrated",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
