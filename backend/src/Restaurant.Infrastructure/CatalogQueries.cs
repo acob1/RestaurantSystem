@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Restaurant.Application;
 namespace Restaurant.Infrastructure;
+
 public sealed class CatalogQueries(BusinessDbContext db) : ICatalogQueries
 {
     public Task<RestaurantDto?> Restaurant(CancellationToken ct) => db.Restaurants.AsNoTracking()
         .Select(x => new RestaurantDto(x.Id, x.Name, x.Currency, x.TimeZone)).SingleOrDefaultAsync(ct);
+
     public async Task<IReadOnlyList<CategoryDto>> Categories(CancellationToken ct) => await db.MenuCategories.AsNoTracking()
         .OrderBy(x => x.Name).Select(x => new CategoryDto(x.Id, x.Name)).ToListAsync(ct);
+
     public async Task<Page<MenuItemDto>> Items(int page, int pageSize, CancellationToken ct)
     {
         var total = await db.MenuItems.CountAsync(ct);
@@ -14,5 +17,19 @@ public sealed class CatalogQueries(BusinessDbContext db) : ICatalogQueries
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(x => new MenuItemDto(x.Id, x.CategoryId, x.Name, x.Description, x.PriceMinor, x.Available)).ToListAsync(ct);
         return new(items, page, pageSize, total);
+    }
+
+    public Task<MenuItemDto?> ItemById(Guid id, CancellationToken ct) => db.MenuItems.AsNoTracking()
+        .Where(x => x.Id == id)
+        .Select(x => new MenuItemDto(x.Id, x.CategoryId, x.Name, x.Description, x.PriceMinor, x.Available))
+        .SingleOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<MenuItemDto>> ItemsByIds(IEnumerable<Guid> ids, CancellationToken ct)
+    {
+        var idList = ids.ToList();
+        return await db.MenuItems.AsNoTracking()
+            .Where(x => idList.Contains(x.Id))
+            .Select(x => new MenuItemDto(x.Id, x.CategoryId, x.Name, x.Description, x.PriceMinor, x.Available))
+            .ToListAsync(ct);
     }
 }

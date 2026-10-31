@@ -1,0 +1,325 @@
+{
+  "id": "restaurantCartOperations04",
+  "name": "04 · Cart operations (development)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "cart-webhook",
+      "name": "Cart operations webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "restaurant-cart-operations",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "restaurant-dev/cart",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "restaurantHeaderAuth01",
+          "name": "Restaurant development webhook"
+        }
+      }
+    },
+    {
+      "id": "validate-request",
+      "name": "Validate cart request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $input.first().json.body;\nconst valid = body && typeof body === 'object' && !Array.isArray(body)\n  && typeof body.whatsAppId === 'string' && /^[0-9]{10,15}$/.test(body.whatsAppId)\n  && ['add', 'update', 'remove', 'clear', 'get'].includes(body.action);\nif (!valid) return [{json: {valid: false, error: 'invalid_request'}}];\n\nconst action = body.action;\nlet actionValid = true;\n\nif (action === 'add') {\n  actionValid = typeof body.menuItemId === 'string' && body.menuItemId.length === 36\n    && Number.isInteger(body.quantity) && body.quantity >= 1 && body.quantity <= 50;\n}\nif (action === 'update') {\n  actionValid = typeof body.itemId === 'string' && body.itemId.length === 36\n    && Number.isInteger(body.quantity) && body.quantity >= 0 && body.quantity <= 50;\n}\nif (action === 'remove') {\n  actionValid = typeof body.itemId === 'string' && body.itemId.length === 36;\n}\n\nif (!actionValid) return [{json: {valid: false, error: 'invalid_action_params'}}];\n\nreturn [{json: {valid: true, ...body}}];"
+      }
+    },
+    {
+      "id": "valid-check",
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [500, 0],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "is-valid", "leftValue": "={{ $json.valid }}", "rightValue": "", "operator": {"type": "boolean", "operation": "true", "singleValue": true}}],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "get-or-create-session",
+      "name": "Get or create customer session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [750, -100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/conversations/session",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({whatsAppId: $json.whatsAppId}) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "session-check",
+      "name": "Session created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1000, -100],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "session-ok", "leftValue": "={{ $json.statusCode }}", "rightValue": 200, "operator": {"type": "number", "operation": "equals"}}],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "route-action",
+      "name": "Route cart action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1250, -200],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $('Validate cart request').first().json.action }}",
+        "rules": {
+          "rules": [
+            {"value": "add", "output": 0},
+            {"value": "update", "output": 1},
+            {"value": "remove", "output": 2},
+            {"value": "clear", "output": 3},
+            {"value": "get", "output": 4}
+          ]
+        }
+      }
+    },
+    {
+      "id": "add-to-cart",
+      "name": "Add item to cart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1500, -400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get or create customer session').first().json.body.customer.id }}/cart/items",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({menuItemId: $('Validate cart request').first().json.menuItemId, quantity: $('Validate cart request').first().json.quantity, instructions: $('Validate cart request').first().json.instructions || null}) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "update-cart",
+      "name": "Update cart item quantity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1500, -250],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get or create customer session').first().json.body.customer.id }}/cart/items/{{ $('Validate cart request').first().json.itemId }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({quantity: $('Validate cart request').first().json.quantity}) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "remove-from-cart",
+      "name": "Remove item from cart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1500, -100],
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get or create customer session').first().json.body.customer.id }}/cart/items/{{ $('Validate cart request').first().json.itemId }}",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "clear-cart",
+      "name": "Clear cart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1500, 50],
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get or create customer session').first().json.body.customer.id }}/cart",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "get-cart",
+      "name": "Get current cart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1500, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get or create customer session').first().json.body.customer.id }}/cart",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "format-response",
+      "name": "Format cart response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, -100],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const response = $input.first().json;\nconst session = $('Get or create customer session').first().json.body;\nconst action = $('Validate cart request').first().json.action;\n\nif (!response || response.error || (response.statusCode && response.statusCode >= 400)) {\n  const errorMsg = response.body?.error || 'Cart operation failed';\n  return [{json: {\n    ok: false,\n    error: errorMsg,\n    action,\n    customerId: session?.customer?.id,\n    httpStatus: response.statusCode || 500\n  }}];\n}\n\nconst cart = response.body || response;\nconst formatCart = (c) => ({\n  items: (c.items || []).map(item => ({\n    id: item.id,\n    name: item.name,\n    quantity: item.quantity,\n    unitPrice: (item.unitPriceMinor / 100).toFixed(2),\n    lineTotal: (item.lineTotalMinor / 100).toFixed(2)\n  })),\n  subtotal: ((c.subtotalMinor || 0) / 100).toFixed(2),\n  itemCount: (c.items || []).reduce((sum, item) => sum + item.quantity, 0)\n});\n\nlet reply;\nif (action === 'add') reply = `Added to cart. ${formatCart(cart).itemCount} items, total GHS ${formatCart(cart).subtotal}`;\nelse if (action === 'remove') reply = `Item removed. ${formatCart(cart).itemCount} items remaining.`;\nelse if (action === 'clear') reply = 'Cart cleared.';\nelse if (action === 'update') reply = `Cart updated. Total: GHS ${formatCart(cart).subtotal}`;\nelse reply = formatCart(cart).items.length ? `Your cart: ${formatCart(cart).items.map(i => `${i.quantity}× ${i.name}`).join(', ')}. Total: GHS ${formatCart(cart).subtotal}` : 'Your cart is empty.';\n\nreturn [{json: {\n  ok: true,\n  action,\n  customerId: session?.customer?.id,\n  cart: formatCart(cart),\n  reply,\n  httpStatus: 200\n}}];"
+      }
+    },
+    {
+      "id": "success-response",
+      "name": "Return cart result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [2000, -100],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}",
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "invalid-response",
+      "name": "Reject invalid request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [750, 150],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":false,\"error\":\"invalid_request\",\"message\":\"Provide whatsAppId and valid action (add, update, remove, clear, get)\"}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "session-error",
+      "name": "Session creation failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1250, 50],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":false,\"error\":\"session_failed\",\"message\":\"Could not create customer session\"}",
+        "options": {
+          "responseCode": 500,
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "notes",
+      "name": "Cart operations workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-20, -360],
+      "parameters": {
+        "content": "## Cart operations — development\nPOST /webhook/restaurant-dev/cart\n\nActions:\n- add: {whatsAppId, action:'add', menuItemId, quantity, instructions?}\n- update: {whatsAppId, action:'update', itemId, quantity}\n- remove: {whatsAppId, action:'remove', itemId}\n- clear: {whatsAppId, action:'clear'}\n- get: {whatsAppId, action:'get'}\n\nCalls backend API to manage cart, returns formatted response.",
+        "height": 280,
+        "width": 500
+      }
+    }
+  ],
+  "connections": {
+    "Cart operations webhook": {
+      "main": [[{"node": "Validate cart request", "type": "main", "index": 0}]]
+    },
+    "Validate cart request": {
+      "main": [[{"node": "Valid request?", "type": "main", "index": 0}]]
+    },
+    "Valid request?": {
+      "main": [
+        [{"node": "Get or create customer session", "type": "main", "index": 0}],
+        [{"node": "Reject invalid request", "type": "main", "index": 0}]
+      ]
+    },
+    "Get or create customer session": {
+      "main": [[{"node": "Session created?", "type": "main", "index": 0}]]
+    },
+    "Session created?": {
+      "main": [
+        [{"node": "Route cart action", "type": "main", "index": 0}],
+        [{"node": "Session creation failed", "type": "main", "index": 0}]
+      ]
+    },
+    "Route cart action": {
+      "main": [
+        [{"node": "Add item to cart", "type": "main", "index": 0}],
+        [{"node": "Update cart item quantity", "type": "main", "index": 0}],
+        [{"node": "Remove item from cart", "type": "main", "index": 0}],
+        [{"node": "Clear cart", "type": "main", "index": 0}],
+        [{"node": "Get current cart", "type": "main", "index": 0}]
+      ]
+    },
+    "Add item to cart": {
+      "main": [[{"node": "Format cart response", "type": "main", "index": 0}]]
+    },
+    "Update cart item quantity": {
+      "main": [[{"node": "Format cart response", "type": "main", "index": 0}]]
+    },
+    "Remove item from cart": {
+      "main": [[{"node": "Format cart response", "type": "main", "index": 0}]]
+    },
+    "Clear cart": {
+      "main": [[{"node": "Format cart response", "type": "main", "index": 0}]]
+    },
+    "Get current cart": {
+      "main": [[{"node": "Format cart response", "type": "main", "index": 0}]]
+    },
+    "Format cart response": {
+      "main": [[{"node": "Return cart result", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 45,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

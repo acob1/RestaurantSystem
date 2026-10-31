@@ -1574,31 +1574,32 @@ Build the application step by step using complete, maintainable, real code.
 
 //// NEW LINE OF COOMAD TO CONTINUE WITH 
 
-I want to adjust the development order without losing or overwriting any work you've already completed.
 
-First, inspect the existing project and summarize:
-- What has been implemented.
-- What is working.
-- What remains incomplete.
-- Which tests have actually passed.
 
-Keep all existing Angular, ASP.NET Core, Neon, and other project files.
+I have opened n8n and confirmed that **01 · Restaurant development inbox** is visible and Published.
 
-**New priority: Get n8n working before continuing with the full backend and Angular dashboard.**
+The workflow contains:
+- Development inbox webhook
+- Validate simulated message
+- Acknowledge development message
+- Reject invalid input
 
-The next milestone should be:
+My local n8n is running on `localhost:5679`.
 
-1. Configure Neon PostgreSQL for n8n persistence.
-2. Prepare n8n for Render Free deployment.
-3. Create and test the first n8n webhook workflow.
-4. Integrate Groq AI.
-5. Connect the Meta WhatsApp test environment.
-6. Create a basic restaurant AI agent that responds to greetings, menu requests, and simple orders using mock menu data.
+Please proceed with the Render deployment milestone.
 
-Once that is working, continue integrating the ASP.NET Core backend, real database-driven menus, Paystack payments, Cloudinary, and the Angular dashboard.
+Guide me step by step through:
 
-Do not rebuild completed components unnecessarily.
+1. Creating the Render Blueprint from the GitHub repository.
+2. Configuring the required Neon database connection variables.
+3. Adding the n8n encryption key and other secrets securely.
+4. Deploying n8n to Render Free.
+5. Checking that deployment is healthy.
+6. Verifying that workflows and credentials persist after restarting.
+7. Testing the published development webhook on Render.
 
-Do not generate all workflows at once. Implement and test each milestone before moving forward.
+Please do not modify the already working local workflow unnecessarily.
 
-For now, focus on getting the n8n automation running successfully.
+Do not integrate Groq or WhatsApp until the Render and Neon deployment is verified.
+
+Tell me exactly what I need to configure manually in Render and Neon.

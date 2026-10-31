@@ -1,0 +1,216 @@
+{
+  "id": "restaurantCheckout05",
+  "name": "05 · Checkout and order creation (development)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "checkout-webhook",
+      "name": "Checkout webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "restaurant-checkout",
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "restaurant-dev/checkout",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "restaurantHeaderAuth01",
+          "name": "Restaurant development webhook"
+        }
+      }
+    },
+    {
+      "id": "validate-checkout",
+      "name": "Validate checkout request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const body = $input.first().json.body;\nconst valid = body && typeof body === 'object' && !Array.isArray(body)\n  && typeof body.whatsAppId === 'string' && /^[0-9]{10,15}$/.test(body.whatsAppId)\n  && ['pickup', 'delivery'].includes(body.fulfillment?.toLowerCase());\n\nif (!valid) return [{json: {valid: false, error: 'invalid_request'}}];\n\nconst fulfillment = body.fulfillment.toLowerCase();\nif (fulfillment === 'delivery') {\n  if (!body.deliveryAddress || typeof body.deliveryAddress !== 'string' || body.deliveryAddress.trim().length < 5) {\n    return [{json: {valid: false, error: 'delivery_address_required'}}];\n  }\n}\n\nreturn [{json: {\n  valid: true,\n  whatsAppId: body.whatsAppId,\n  fulfillment: fulfillment.charAt(0).toUpperCase() + fulfillment.slice(1),\n  deliveryAddress: body.deliveryAddress?.trim() || null,\n  deliveryLandmark: body.deliveryLandmark?.trim() || null,\n  notes: body.notes?.trim() || null\n}}];"
+      }
+    },
+    {
+      "id": "valid-check",
+      "name": "Valid checkout?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [500, 0],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "is-valid", "leftValue": "={{ $json.valid }}", "rightValue": "", "operator": {"type": "boolean", "operation": "true", "singleValue": true}}],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "get-customer",
+      "name": "Get customer session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [750, -100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/conversations/session",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({whatsAppId: $json.whatsAppId}) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "customer-check",
+      "name": "Customer found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1000, -100],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2},
+          "conditions": [{"id": "customer-ok", "leftValue": "={{ $json.statusCode }}", "rightValue": 200, "operator": {"type": "number", "operation": "equals"}}],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "perform-checkout",
+      "name": "Create order from cart",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1250, -200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.API_BASE_URL }}/api/v1/customers/{{ $('Get customer session').first().json.body.customer.id }}/checkout",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({fulfillment: $('Validate checkout request').first().json.fulfillment, deliveryAddress: $('Validate checkout request').first().json.deliveryAddress, deliveryLandmark: $('Validate checkout request').first().json.deliveryLandmark, notes: $('Validate checkout request').first().json.notes}) }}",
+        "options": {
+          "timeout": 15000,
+          "response": {"response": {"fullResponse": true, "neverError": true, "responseFormat": "json"}}
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "format-order",
+      "name": "Format order response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, -200],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const response = $input.first().json;\nconst customer = $('Get customer session').first().json.body?.customer;\nconst checkoutReq = $('Validate checkout request').first().json;\n\nif (!response || response.error || (response.statusCode && response.statusCode >= 400)) {\n  const errorMsg = response.body?.error || 'Checkout failed';\n  let userMessage = 'Sorry, checkout failed. ';\n  if (errorMsg.includes('Cart not found') || errorMsg.includes('empty')) {\n    userMessage += 'Your cart is empty. Add some items first!';\n  } else {\n    userMessage += 'Please try again.';\n  }\n  return [{json: {\n    ok: false,\n    error: errorMsg,\n    reply: userMessage,\n    httpStatus: response.statusCode || 500\n  }}];\n}\n\nconst order = response.body;\nconst formatPrice = (minor) => (minor / 100).toFixed(2);\n\nconst itemsSummary = order.items.map(i => `${i.quantity}× ${i.name}`).join(', ');\nlet reply = `Order ${order.orderNumber} created!\\n\\n`;\nreply += `Items: ${itemsSummary}\\n`;\nreply += `Subtotal: GHS ${formatPrice(order.subtotalMinor)}\\n`;\nif (order.deliveryFeeMinor > 0) reply += `Delivery: GHS ${formatPrice(order.deliveryFeeMinor)}\\n`;\nreply += `Total: GHS ${formatPrice(order.totalMinor)}\\n\\n`;\nreply += order.fulfillment === 'Delivery' \n  ? `Delivering to: ${order.deliveryAddress}\\n`\n  : 'Ready for pickup.\\n';\nreply += '\\nReply with your payment method: Paystack, MoMo, or Bank Transfer.';\n\nreturn [{json: {\n  ok: true,\n  orderId: order.id,\n  orderNumber: order.orderNumber,\n  customerId: customer?.id,\n  status: order.status,\n  fulfillment: order.fulfillment,\n  subtotal: formatPrice(order.subtotalMinor),\n  deliveryFee: formatPrice(order.deliveryFeeMinor),\n  total: formatPrice(order.totalMinor),\n  items: order.items.map(i => ({name: i.name, quantity: i.quantity, unitPrice: formatPrice(i.unitPriceMinor), lineTotal: formatPrice(i.lineTotalMinor)})),\n  reply,\n  httpStatus: 201\n}}];"
+      }
+    },
+    {
+      "id": "success-response",
+      "name": "Return order result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1750, -200],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}",
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "invalid-response",
+      "name": "Reject invalid request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [750, 150],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: $('Validate checkout request').first().json.error || 'invalid_request', message: 'Provide whatsAppId and fulfillment (pickup or delivery). For delivery, include deliveryAddress.' } }}",
+        "options": {
+          "responseCode": 422,
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "customer-error",
+      "name": "Customer lookup failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1250, 50],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\":false,\"error\":\"customer_not_found\",\"message\":\"Customer session not found. Start a conversation first.\"}",
+        "options": {
+          "responseCode": 404,
+          "responseHeaders": {"entries": [{"name": "Cache-Control", "value": "no-store"}]}
+        }
+      }
+    },
+    {
+      "id": "notes",
+      "name": "Checkout workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-20, -360],
+      "parameters": {
+        "content": "## Checkout — development\nPOST /webhook/restaurant-dev/checkout\n\nRequest:\n{\n  whatsAppId: string,\n  fulfillment: 'pickup' | 'delivery',\n  deliveryAddress?: string,\n  deliveryLandmark?: string,\n  notes?: string\n}\n\nCreates order from customer's cart, clears cart, returns order summary with payment instructions.",
+        "height": 280,
+        "width": 500
+      }
+    }
+  ],
+  "connections": {
+    "Checkout webhook": {
+      "main": [[{"node": "Validate checkout request", "type": "main", "index": 0}]]
+    },
+    "Validate checkout request": {
+      "main": [[{"node": "Valid checkout?", "type": "main", "index": 0}]]
+    },
+    "Valid checkout?": {
+      "main": [
+        [{"node": "Get customer session", "type": "main", "index": 0}],
+        [{"node": "Reject invalid request", "type": "main", "index": 0}]
+      ]
+    },
+    "Get customer session": {
+      "main": [[{"node": "Customer found?", "type": "main", "index": 0}]]
+    },
+    "Customer found?": {
+      "main": [
+        [{"node": "Create order from cart", "type": "main", "index": 0}],
+        [{"node": "Customer lookup failed", "type": "main", "index": 0}]
+      ]
+    },
+    "Create order from cart": {
+      "main": [[{"node": "Format order response", "type": "main", "index": 0}]]
+    },
+    "Format order response": {
+      "main": [[{"node": "Return order result", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 60,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveExecutionProgress": false,
+    "saveManualExecutions": false
+  },
+  "pinData": {},
+  "tags": []
+}

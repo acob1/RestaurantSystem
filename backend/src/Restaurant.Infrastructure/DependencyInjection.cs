@@ -3,7 +3,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Restaurant.Application;
+
 namespace Restaurant.Infrastructure;
+
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config, bool development)
@@ -15,7 +17,17 @@ public static class DependencyInjection
             throw new InvalidOperationException("Hosted databases must use SSL Mode=VerifyFull.");
         parsed.MaxPoolSize = 10; parsed.Timeout = 10; parsed.CommandTimeout = 15;
         services.AddDbContext<BusinessDbContext>(o => o.UseNpgsql(parsed.ConnectionString));
+
+        // Query services
         services.AddScoped<ICatalogQueries, CatalogQueries>();
+
+        // Business services
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<ICartService, CartService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<IConversationService, ConversationService>();
+
         return services;
     }
 }

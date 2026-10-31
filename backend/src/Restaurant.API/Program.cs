@@ -39,9 +39,10 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = x => x
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 var api = app.MapGroup("/api/v1").RequireRateLimiting("read");
 api.MapMetaWebhook();
-api.MapGet("/system/status", () => new SystemStatusDto("Phase 1", "Test", "GHS",
-    ["API connectivity", "Database readiness", "Restaurant profile", "Read-only menu"],
-    ["Staff authentication", "WhatsApp", "Orders", "Payments", "Kitchen", "Reports"]));
+api.MapBusinessEndpoints();
+api.MapGet("/system/status", () => new SystemStatusDto("Phase 3", "Test", "GHS",
+    ["API connectivity", "Database readiness", "Restaurant profile", "Menu", "Customers", "Carts", "Orders", "Payments", "Conversations", "WhatsApp webhooks"],
+    ["Staff authentication", "Kitchen dashboard", "Reports", "Cloudinary images"]));
 api.MapGet("/restaurant", async Task<IResult> (ICatalogQueries queries, CancellationToken ct) =>
     await queries.Restaurant(ct) is { } restaurant ? Results.Ok(restaurant) : Results.NotFound());
 api.MapGet("/menu/categories", async (ICatalogQueries queries, CancellationToken ct) => Results.Ok(await queries.Categories(ct)));
