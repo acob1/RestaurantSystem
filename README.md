@@ -21,6 +21,7 @@ dotnet run --project backend/src/Restaurant.API -- --migrate --seed
 dotnet run --project backend/src/Restaurant.API
 ```
 
+
 In another terminal:
 
 ```sh

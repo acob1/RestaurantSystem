@@ -80,7 +80,7 @@ This workflow handles all customer intents:
    - `06 - AI integrated conversation` (main AI workflow)
    - `03 - Meta test bridge` (connects WhatsApp to AI)
 
-## Backend API Configuration
+## Backend API Configuration.   ![alt text](image.png)
 
 Set these environment variables in the backend API service:
 
