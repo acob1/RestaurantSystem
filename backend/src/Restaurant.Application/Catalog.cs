@@ -118,6 +118,54 @@ public sealed record PaymentAttemptDto(
 public sealed record InitializePaymentRequest(Guid OrderId, string Method);
 public sealed record PaymentInitializedDto(Guid PaymentAttemptId, string Reference, string? CheckoutUrl);
 
+// Payment details for manual payment (bank transfer / MoMo)
+public sealed record PaymentDetailsDto(
+    string BankName,
+    string BankAccountNumber,
+    string BankAccountName,
+    string MoMoNumber,
+    string MoMoName
+);
+
+// Evidence upload for payment screenshots
+public sealed record UploadEvidenceRequest(Guid PaymentAttemptId, string Base64Image, string? FileName);
+public sealed record PaymentEvidenceDto(
+    Guid Id,
+    Guid PaymentAttemptId,
+    string ImageUrl,
+    DateTimeOffset UploadedAt
+);
+
+// Payment review for admin dashboard
+public sealed record PaymentReviewDto(
+    Guid Id,
+    Guid PaymentAttemptId,
+    string PaymentReference,
+    Guid OrderId,
+    string OrderNumber,
+    long AmountMinor,
+    string Currency,
+    string PaymentMethod,
+    string PaymentStatus,
+    Guid? EvidenceId,
+    string? EvidenceUrl,
+    bool? Approved,
+    string? ReviewedBy,
+    string? Notes,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ReviewedAt
+);
+
+public sealed record ReviewPaymentRequest(bool Approved, string? Notes);
+
+// Cloudinary service for uploading payment screenshots
+public sealed record CloudinaryUploadResult(string PublicId, string AssetId, string SecureUrl);
+
+public interface ICloudinaryService
+{
+    Task<CloudinaryUploadResult> UploadImageAsync(string base64Image, string folder, string? fileName = null, CancellationToken ct = default);
+}
+
 public interface IPaymentService
 {
     Task<PaymentInitializedDto> Initialize(InitializePaymentRequest request, CancellationToken ct);
@@ -126,6 +174,11 @@ public interface IPaymentService
     Task<IReadOnlyList<PaymentAttemptDto>> GetByOrder(Guid orderId, CancellationToken ct);
     Task MarkVerified(string reference, string externalReference, CancellationToken ct);
     Task MarkFailed(string reference, string reason, CancellationToken ct);
+    PaymentDetailsDto GetPaymentDetails();
+    Task<PaymentEvidenceDto> UploadEvidence(UploadEvidenceRequest request, CancellationToken ct);
+    Task<IReadOnlyList<PaymentReviewDto>> GetPendingReviews(CancellationToken ct);
+    Task<PaymentReviewDto?> GetReviewById(Guid reviewId, CancellationToken ct);
+    Task<PaymentReviewDto> ReviewPayment(Guid reviewId, ReviewPaymentRequest request, string reviewedBy, CancellationToken ct);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

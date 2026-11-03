@@ -21,6 +21,9 @@ public static class DependencyInjection
         // Query services
         services.AddScoped<ICatalogQueries, CatalogQueries>();
 
+        // Infrastructure services
+        services.AddSingleton<ICloudinaryService, CloudinaryService>();
+
         // Business services
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ICartService, CartService>();

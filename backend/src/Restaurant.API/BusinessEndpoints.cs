@@ -171,6 +171,54 @@ public static class BusinessEndpoints
             return Results.Ok(payments);
         });
 
+        // Payment details (bank account / MoMo) - for agent to share with customer
+        api.MapGet("/payments/details", (IPaymentService service) =>
+        {
+            var details = service.GetPaymentDetails();
+            return Results.Ok(details);
+        });
+
+        // Upload payment evidence (screenshot)
+        api.MapPost("/payments/evidence", async (UploadEvidenceRequest request, IPaymentService service, CancellationToken ct) =>
+        {
+            try
+            {
+                var evidence = await service.UploadEvidence(request, ct);
+                return Results.Created($"/api/v1/payments/evidence/{evidence.Id}", evidence);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // Admin: Get pending payment reviews
+        api.MapGet("/payments/reviews", async (IPaymentService service, CancellationToken ct) =>
+        {
+            var reviews = await service.GetPendingReviews(ct);
+            return Results.Ok(reviews);
+        });
+
+        // Admin: Get specific review
+        api.MapGet("/payments/reviews/{reviewId:guid}", async (Guid reviewId, IPaymentService service, CancellationToken ct) =>
+            await service.GetReviewById(reviewId, ct) is { } review ? Results.Ok(review) : Results.NotFound());
+
+        // Admin: Approve or reject payment
+        api.MapPost("/payments/reviews/{reviewId:guid}/decision", async (Guid reviewId, ReviewPaymentRequest request, IPaymentService service, CancellationToken ct) =>
+        {
+            try
+            {
+                // TODO: Get actual admin user from auth context when auth is implemented
+                var reviewedBy = "Admin";
+                var review = await service.ReviewPayment(reviewId, request, reviewedBy, ct);
+                return Results.Ok(review);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
         // Conversation endpoints (for n8n integration)
         api.MapPost("/conversations/session", async (GetOrCreateSessionRequest request, IConversationService service, ICustomerService customerService, CancellationToken ct) =>
         {

@@ -1,4 +1,8 @@
+using System.Security.Cryptography;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Restaurant.Application;
 using Restaurant.Domain;
 
@@ -301,10 +305,58 @@ public sealed class OrderService(BusinessDbContext db) : IOrderService
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Cloudinary Service
+// ─────────────────────────────────────────────────────────────────────────────
+
+public sealed class CloudinaryService : ICloudinaryService
+{
+    private readonly Cloudinary _cloudinary;
+
+    public CloudinaryService(IConfiguration config)
+    {
+        var cloudName = config["Cloudinary:CloudName"] ?? throw new InvalidOperationException("Cloudinary:CloudName is required");
+        var apiKey = config["Cloudinary:ApiKey"] ?? throw new InvalidOperationException("Cloudinary:ApiKey is required");
+        var apiSecret = config["Cloudinary:ApiSecret"] ?? throw new InvalidOperationException("Cloudinary:ApiSecret is required");
+
+        var account = new Account(cloudName, apiKey, apiSecret);
+        _cloudinary = new Cloudinary(account);
+    }
+
+    public async Task<CloudinaryUploadResult> UploadImageAsync(string base64Image, string folder, string? fileName = null, CancellationToken ct = default)
+    {
+        // Remove data URI prefix if present (e.g., "data:image/png;base64,")
+        var base64Data = base64Image;
+        if (base64Image.Contains(','))
+        {
+            base64Data = base64Image.Split(',')[1];
+        }
+
+        var bytes = Convert.FromBase64String(base64Data);
+        using var stream = new MemoryStream(bytes);
+
+        var uploadParams = new ImageUploadParams
+        {
+            File = new FileDescription(fileName ?? $"payment-{Guid.NewGuid()}", stream),
+            Folder = folder,
+            Transformation = new Transformation().Quality("auto").FetchFormat("auto")
+        };
+
+        var result = await _cloudinary.UploadAsync(uploadParams, ct);
+
+        if (result.Error != null)
+        {
+            throw new InvalidOperationException($"Cloudinary upload failed: {result.Error.Message}");
+        }
+
+        return new CloudinaryUploadResult(result.PublicId, result.AssetId, result.SecureUrl.ToString());
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Payment Service
 // ─────────────────────────────────────────────────────────────────────────────
 
-public sealed class PaymentService(BusinessDbContext db) : IPaymentService
+public sealed class PaymentService(BusinessDbContext db, IConfiguration config, ICloudinaryService cloudinary) : IPaymentService
 {
     public async Task<PaymentInitializedDto> Initialize(InitializePaymentRequest request, CancellationToken ct)
     {
@@ -396,6 +448,160 @@ public sealed class PaymentService(BusinessDbContext db) : IPaymentService
         x.Id, x.OrderId, x.Reference, x.Method.ToString(), x.Status.ToString(),
         x.AmountMinor, x.Currency, x.CheckoutUrl, x.CreatedAt, x.ExpiresAt, x.VerifiedAt
     );
+
+    public PaymentDetailsDto GetPaymentDetails()
+    {
+        return new PaymentDetailsDto(
+            config["Payments:BankName"] ?? "",
+            config["Payments:BankAccountNumber"] ?? "",
+            config["Payments:BankAccountName"] ?? "",
+            config["Payments:MoMoNumber"] ?? "",
+            config["Payments:MoMoName"] ?? ""
+        );
+    }
+
+    public async Task<PaymentEvidenceDto> UploadEvidence(UploadEvidenceRequest request, CancellationToken ct)
+    {
+        var payment = await db.PaymentAttempts.SingleOrDefaultAsync(x => x.Id == request.PaymentAttemptId, ct)
+            ?? throw new InvalidOperationException("Payment attempt not found.");
+
+        if (payment.Status == PaymentStatus.Verified)
+            throw new InvalidOperationException("Payment is already verified.");
+
+        // Upload to Cloudinary
+        var uploadResult = await cloudinary.UploadImageAsync(
+            request.Base64Image,
+            "payment-evidence",
+            request.FileName,
+            ct
+        );
+
+        // Compute hash for duplicate detection
+        var base64Data = request.Base64Image.Contains(',')
+            ? request.Base64Image.Split(',')[1]
+            : request.Base64Image;
+        var bytes = Convert.FromBase64String(base64Data);
+        var hash = Convert.ToHexString(SHA256.HashData(bytes));
+
+        // Create evidence record
+        var evidence = new PaymentEvidence(
+            request.PaymentAttemptId,
+            uploadResult.PublicId,
+            uploadResult.AssetId,
+            uploadResult.SecureUrl,
+            hash
+        );
+        db.PaymentEvidences.Add(evidence);
+
+        // Create pending review record
+        var review = new PaymentReview(payment.Id, evidence.Id);
+        db.PaymentReviews.Add(review);
+
+        // Update order status to PaymentUnderReview
+        var order = await db.Orders.SingleAsync(x => x.Id == payment.OrderId, ct);
+        if (order.Status == OrderStatus.AwaitingPayment)
+        {
+            var oldStatus = order.Status;
+            order.TransitionTo(OrderStatus.PaymentUnderReview);
+            db.OrderStatusHistories.Add(new OrderStatusHistory(order.Id, oldStatus, OrderStatus.PaymentUnderReview, "Evidence uploaded", "System"));
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        return new PaymentEvidenceDto(evidence.Id, evidence.PaymentAttemptId, evidence.CloudinaryUrl, evidence.UploadedAt);
+    }
+
+    public async Task<IReadOnlyList<PaymentReviewDto>> GetPendingReviews(CancellationToken ct)
+    {
+        return await db.PaymentReviews.AsNoTracking()
+            .Where(x => x.Approved == null)
+            .Join(db.PaymentAttempts.AsNoTracking(), r => r.PaymentAttemptId, p => p.Id, (r, p) => new { Review = r, Payment = p })
+            .Join(db.Orders.AsNoTracking(), rp => rp.Payment.OrderId, o => o.Id, (rp, o) => new { rp.Review, rp.Payment, Order = o })
+            .GroupJoin(db.PaymentEvidences.AsNoTracking(), rpo => rpo.Review.EvidenceId, e => e.Id, (rpo, evidences) => new { rpo.Review, rpo.Payment, rpo.Order, Evidence = evidences.FirstOrDefault() })
+            .OrderByDescending(x => x.Review.CreatedAt)
+            .Select(x => new PaymentReviewDto(
+                x.Review.Id,
+                x.Payment.Id,
+                x.Payment.Reference,
+                x.Order.Id,
+                x.Order.OrderNumber,
+                x.Payment.AmountMinor,
+                x.Payment.Currency,
+                x.Payment.Method.ToString(),
+                x.Payment.Status.ToString(),
+                x.Evidence != null ? x.Evidence.Id : null,
+                x.Evidence != null ? x.Evidence.CloudinaryUrl : null,
+                x.Review.Approved,
+                x.Review.ReviewedBy,
+                x.Review.Notes,
+                x.Review.CreatedAt,
+                x.Review.ReviewedAt
+            ))
+            .ToListAsync(ct);
+    }
+
+    public async Task<PaymentReviewDto?> GetReviewById(Guid reviewId, CancellationToken ct)
+    {
+        return await db.PaymentReviews.AsNoTracking()
+            .Where(x => x.Id == reviewId)
+            .Join(db.PaymentAttempts.AsNoTracking(), r => r.PaymentAttemptId, p => p.Id, (r, p) => new { Review = r, Payment = p })
+            .Join(db.Orders.AsNoTracking(), rp => rp.Payment.OrderId, o => o.Id, (rp, o) => new { rp.Review, rp.Payment, Order = o })
+            .GroupJoin(db.PaymentEvidences.AsNoTracking(), rpo => rpo.Review.EvidenceId, e => e.Id, (rpo, evidences) => new { rpo.Review, rpo.Payment, rpo.Order, Evidence = evidences.FirstOrDefault() })
+            .Select(x => new PaymentReviewDto(
+                x.Review.Id,
+                x.Payment.Id,
+                x.Payment.Reference,
+                x.Order.Id,
+                x.Order.OrderNumber,
+                x.Payment.AmountMinor,
+                x.Payment.Currency,
+                x.Payment.Method.ToString(),
+                x.Payment.Status.ToString(),
+                x.Evidence != null ? x.Evidence.Id : null,
+                x.Evidence != null ? x.Evidence.CloudinaryUrl : null,
+                x.Review.Approved,
+                x.Review.ReviewedBy,
+                x.Review.Notes,
+                x.Review.CreatedAt,
+                x.Review.ReviewedAt
+            ))
+            .SingleOrDefaultAsync(ct);
+    }
+
+    public async Task<PaymentReviewDto> ReviewPayment(Guid reviewId, ReviewPaymentRequest request, string reviewedBy, CancellationToken ct)
+    {
+        var review = await db.PaymentReviews.SingleOrDefaultAsync(x => x.Id == reviewId, ct)
+            ?? throw new InvalidOperationException("Review not found.");
+
+        if (review.Approved != null)
+            throw new InvalidOperationException("Review has already been processed.");
+
+        var payment = await db.PaymentAttempts.SingleAsync(x => x.Id == review.PaymentAttemptId, ct);
+        var order = await db.Orders.SingleAsync(x => x.Id == payment.OrderId, ct);
+
+        if (request.Approved)
+        {
+            review.Approve(reviewedBy, request.Notes);
+            payment.MarkVerified($"MANUAL-{reviewId}");
+
+            var oldStatus = order.Status;
+            order.TransitionTo(OrderStatus.Paid);
+            db.OrderStatusHistories.Add(new OrderStatusHistory(order.Id, oldStatus, OrderStatus.Paid, $"Payment approved by {reviewedBy}", reviewedBy));
+        }
+        else
+        {
+            review.Reject(reviewedBy, request.Notes);
+            payment.MarkFailed(request.Notes ?? "Payment rejected by admin");
+
+            var oldStatus = order.Status;
+            order.TransitionTo(OrderStatus.AwaitingPayment);
+            db.OrderStatusHistories.Add(new OrderStatusHistory(order.Id, oldStatus, OrderStatus.AwaitingPayment, $"Payment rejected: {request.Notes}", reviewedBy));
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        return (await GetReviewById(reviewId, ct))!;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

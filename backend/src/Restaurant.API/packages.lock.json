@@ -28,6 +28,14 @@
           "Newtonsoft.Json": "13.0.4"
         }
       },
+      "CloudinaryDotNet": {
+        "type": "Transitive",
+        "resolved": "1.26.2",
+        "contentHash": "JUDOUKa7T+h0nmMhBdBxCkCldN4/DIZLOlh5p30KrcBX6Spral6vxTWhzk6OH2pGd8MGL5R379EsK7tJr/IQpw==",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3"
+        }
+      },
       "Humanizer.Core": {
         "type": "Transitive",
         "resolved": "2.14.1",
@@ -233,6 +241,7 @@
       "restaurant.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "CloudinaryDotNet": "[1.26.2, )",
           "Microsoft.EntityFrameworkCore": "[10.0.13, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.13, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )",
